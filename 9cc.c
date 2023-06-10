@@ -96,7 +96,7 @@ Token *tokenize(char *p)
             p++;
             continue;
         }
-        if (*p == '+' || *p == '-' || *p == '(' || *p == ')')    
+        if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')')
         {
             cur = new_token(TK_RESERVED, cur, p++);
             continue;
@@ -112,7 +112,6 @@ Token *tokenize(char *p)
     new_token(TK_EOF, cur, p);
     return head.next;
 }
-
 
 typedef enum
 {
@@ -151,11 +150,13 @@ Node *new_node_num(int val)
 }
 
 // expr    = mul ("+" mul | "-" mul)*
-// mul     = primary ("*" primary | "/" primary)*
+// mul     = unary ("*" unary | "/" unary)*
+// unary   = (+|-)?primary
 // primary = num | "(" expr ")"
 
 Node *expr();
 Node *mul();
+Node *unary();
 Node *primary();
 
 Node *expr()
@@ -180,22 +181,35 @@ Node *expr()
 
 Node *mul()
 {
-    Node *node = primary();
+    Node *node = unary();
     for (;;)
     {
         if (consume('*'))
         {
-            node = new_node(ND_MUL, node, primary());
+            node = new_node(ND_MUL, node, unary());
         }
-        else if (consume('-'))
+        else if (consume('/'))
         {
-            node = new_node(ND_DIV, node, primary());
+            node = new_node(ND_DIV, node, unary());
         }
         else
         {
             return node;
         }
     }
+}
+
+Node *unary()
+{
+    if (consume('+'))
+    {
+        return primary();
+    }
+    if (consume('-'))
+    {
+        return new_node(ND_SUB, new_node_num(0), primary());
+    }
+    return primary();
 }
 
 Node *primary()
@@ -213,13 +227,13 @@ void gen(Node *node)
 {
     if (node->kind == ND_NUM)
     {
-        printf(" push %d\n", node->val);
+        printf("  push %d\n", node->val);
         return;
     }
     gen(node->lhs);
     gen(node->rhs);
-    printf(" pip rdi\n");
-    printf(" pip rax\n");
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
     switch (node->kind)
     {
     case ND_ADD:
@@ -249,21 +263,13 @@ int main(int argc, char **argv)
     }
 
     token = tokenize(argv[1]);
+    Node *node = expr();
 
     printf(".intel_syntax noprefix\n");
     printf(".globl main\n");
     printf("main:\n");
-    printf("  mov rax, %d\n", expect_number());
-    while (!at_eof())
-    {
-        if (consume('+'))
-        {
-            printf("  add rax, %d\n", expect_number());
-            continue;
-        }
-        expect('-');
-        printf("  sub rax, %d\n", expect_number());
-    }
+    gen(node);
+    printf("  pop rax\n");
     printf("  ret\n");
     return 0;
 }
