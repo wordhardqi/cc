@@ -1,9 +1,16 @@
 CFALGS=-std=c11 -ggdb -static
-9cc: 9cc.c
-	cc $(CFALGS)    9cc.c   -o 9cc
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
+
+%.o: %.c
+	$(CC)  -c  -o $@ $< $(CFALGS) $(LDFLAGS)
+9cc: $(OBJS)
+	$(CC) $(CFALGS)  -o $@ $^ $(LDFLAGS)
+${OBJS}: 9cc.h
+
 test: 9cc
 	./test.sh
 clean:
-	rm -f 9cc *.0 *~ tmp*
+	rm -f 9cc *.o *~ tmp*
 
 .PHONY: test clean
