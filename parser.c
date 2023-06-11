@@ -5,9 +5,22 @@ bool startswith(char *p, char *q)
     return memcmp(p, q, strlen(q)) == 0;
 }
 
+bool startswithn(char *p, char *q, int len)
+{
+    return memcmp(p, q, len) == 0;
+}
+
+bool is_ident1(char c)
+{
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
+}
+bool is_alnum(char c)
+{
+    return is_ident1(c) || ('0' <= c && c <= '9');
+}
+
 char *uesr_input;
 Token *token;
-
 
 void error(char *fmt, ...)
 {
@@ -40,12 +53,32 @@ bool consume(char *op)
     return true;
 }
 
-void expect(char* op)
+Token *consum_by_kind(TokenKind kind)
+{
+    if (token->kind == kind)
+    {
+        Token *ret = token;
+        token = token->next;
+        return ret;
+    }
+    return NULL;
+}
+
+void expect(char *op)
 {
     if (token->kind != TK_RESERVED || strlen(op) != token->len || !startswith(token->str, op))
-        error_at(token->str, "expected '%c'", op);
+        error_at(token->str, "expected '%s'", op);
     token = token->next;
 }
+
+bool peek(char *op)
+{
+    if (token->kind != TK_RESERVED || strlen(op) != token->len || !startswith(token->str, op))
+        return false;
+    return true;
+
+}
+
 
 int expect_number()
 {
@@ -89,12 +122,33 @@ Token *tokenize(char *p)
             p += 2;
             continue;
         }
-        if (strchr("+-*/()><", *p))
+
+        if (strchr("+-*/()><;={}", *p))
         {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p += 1;
             continue;
         }
+
+        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6]))
+        {
+            cur = new_token(TK_RETURN, cur, p, 6);
+            p += 6;
+            continue;
+        }
+
+        if (is_ident1(*p))
+        {
+            char *start = p;
+            do
+            {
+                p++;
+            } while (is_alnum(*p));
+
+            cur = new_token(TK_IDENT, cur, start, p - start);
+            continue;
+        }
+
         if (isdigit(*p))
         {
             cur = new_token(TK_NUM, cur, p, 0);
@@ -126,8 +180,16 @@ Node *new_node_num(int val)
     return node;
 }
 
+Node *new_node_var(Token *tok)
+{
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = tok->offset;
+    return node;
+}
+
 // program    = stmt*
-// stmt       = expr ";"
+// stmt       = expr ";" | "{" stmt* "}" | "return" expr ";"
 // expr       = assign
 // assign     = equality ("=" assign)?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -136,8 +198,29 @@ Node *new_node_num(int val)
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-")? primary
 // primary    = num | ident | "(" expr ")"// expr       = equality
+Lvar *locals = NULL;
 
+Lvar *find_lvar(Token *tok)
+{
+    for (Lvar *var = locals; var; var = var->next)
+    {
+        if (var->len = tok->len && startswithn(var->name, tok->str, tok->len))
+        {
+            return var;
+        }
+    }
+    return NULL;
+}
+
+Lvar *new_lvar(Token *tok)
+{
+    Lvar *lvar = calloc(1, sizeof(Lvar));
+}
+
+Node *stmt();
+Node *block_stmt();
 Node *expr();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();
@@ -147,14 +230,77 @@ Node *primary();
 
 Node *parse()
 {
-    return expr();
+    program();
+    return NULL;
 }
 
+Node *code[100];
+void program()
+{
+    int i = 0;
+    while (!at_eof())
+    {
+        code[i++] = stmt();
+    }
+    code[i] = NULL;
+}
 
+Node *stmt()
+{
+    Node *node;
+
+    if (consume("{"))
+    {
+        node = block_stmt();
+        expect("}");
+        return node;
+    }
+    
+    if (consum_by_kind(TK_RETURN))
+    {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_RETURN;
+        node->lhs = expr();
+        expect(";");
+    }
+    else
+    {
+        node = expr();
+        expect(";");
+    }
+    return node;
+}
+
+Node *block_stmt()
+{
+    Node head; 
+    Node * cur_node = &head;
+    while(!peek("}")){
+        cur_node->next = stmt();
+        cur_node = cur_node->next;
+    }
+
+    Node * node = new_node(ND_BLOCK,NULL,NULL);
+    node->next = head.next;
+
+
+    return node;
+
+}
 
 Node *expr()
 {
-    return equality();
+    return assign();
+}
+
+Node *assign()
+{
+    Node *node = equality();
+    if (consume("="))
+    {
+        node = new_node(ND_ASSIGN, node, assign());
+    }
+    return node;
 }
 
 Node *equality()
@@ -266,5 +412,35 @@ Node *primary()
         expect(")");
         return node;
     }
-    return new_node_num(expect_number());
+    Token *cur_token;
+    Node *node;
+    if (cur_token = consum_by_kind(TK_IDENT))
+    {
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_LVAR;
+
+        Lvar *lvar = find_lvar(cur_token);
+        if (lvar)
+        {
+            node->offset = lvar->offset;
+        }
+        else
+        {
+            lvar = calloc(1, sizeof(Lvar));
+            lvar->next = locals;
+            lvar->name = cur_token->str;
+            lvar->len = cur_token->len;
+            lvar->offset = locals == NULL ? 8 : locals->offset + 8;
+            node->offset = lvar->offset;
+            locals = lvar;
+        }
+        return node;
+    }
+    if (cur_token = consum_by_kind(TK_NUM))
+    {
+        node = new_node_num(cur_token->val);
+        return node;
+    }
+    error_at(token->str, "expected expression | ident | num");
+    return NULL;
 }

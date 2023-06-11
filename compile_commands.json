@@ -1,0 +1,16 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-c",
+      "-std=c11",
+      "-ggdb",
+      "-o",
+      "9cc.o",
+      "9cc.c"
+    ],
+    "directory": "/mnt/c/Users/rmqi/ubuntu_files/9cc",
+    "file": "/mnt/c/Users/rmqi/ubuntu_files/9cc/9cc.c",
+    "output": "/mnt/c/Users/rmqi/ubuntu_files/9cc/9cc.o"
+  }
+]

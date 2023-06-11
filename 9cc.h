@@ -8,6 +8,7 @@
 
 //  utils
 bool startswith(char *p, char *q);
+bool startswithn(char *p, char *q, int len);
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 
@@ -15,7 +16,9 @@ void error_at(char *loc, char *fmt, ...);
 typedef enum
 {
     TK_RESERVED,
+    TK_IDENT,
     TK_NUM,
+    TK_RETURN,
     TK_EOF,
 } TokenKind;
 
@@ -26,6 +29,7 @@ typedef struct Token
     int val;
     char *str;
     int len;
+    int offset;
 } Token;
 
 extern char *uesr_input;
@@ -41,21 +45,42 @@ typedef enum
     ND_NE,
     ND_LE,
     ND_LT,
+    ND_ASSIGN,
+    ND_LVAR,
+    ND_RETURN,
+    ND_BLOCK,
     ND_NUM,
 } NodeKind;
+
+typedef struct Lvar Lvar;
+struct Lvar
+{
+    Lvar *next;
+    char *name;
+    int len;
+    int offset;
+};
+
+extern Lvar *locals;
+
 
 typedef struct Node Node;
 
 struct Node
 {
     NodeKind kind;
+    Node * next;
     Node *lhs;
     Node *rhs;
     int val;
+    int offset;
 };
 
 Token *tokenize(char *p);
 Node *parse();
+
+extern Node *code[100];
+void program();
 
 // codegen
 
