@@ -39,4 +39,6 @@ assert 10 "return 4+6;"
 assert 10 'aa =3; bb=7; return aa+bb;'
 assert 3 'aa =3; return aa; bb=7; return aa+bb;'
 assert 3 '{return 3;}'
+assert 3 '{aa =3; return aa; bb=7; return aa+bb;}'
+assert 3 '{aa =3; return aa;}{ bb=7; return aa+bb;}'
 echo OK
