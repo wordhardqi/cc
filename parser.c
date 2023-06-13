@@ -76,9 +76,7 @@ bool peek(char *op)
     if (token->kind != TK_RESERVED || strlen(op) != token->len || !startswith(token->str, op))
         return false;
     return true;
-
 }
-
 
 int expect_number()
 {
@@ -130,12 +128,32 @@ Token *tokenize(char *p)
             continue;
         }
 
-        if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6]))
+        static char *keyword_strs[] = {"return", "if"};
+        static TokenKind keyword_Kinds[] = {TK_RETURN, TK_IF};
+        bool keyword_found = false;
+        for (int i = 0; i < sizeof(keyword_strs) / sizeof(keyword_strs[0]); i++)
         {
-            cur = new_token(TK_RETURN, cur, p, 6);
-            p += 6;
-            continue;
+            char *keyword = keyword_strs[i];
+            TokenKind kind = keyword_Kinds[i];
+            int len = strlen(keyword);
+            if (strncmp(p, keyword, len) == 0 && !is_alnum(p[len]))
+            {
+                cur = new_token(kind, cur, p, len);
+                p += len;
+                keyword_found = true;
+                break;
+            }
         }
+
+        if (keyword_found)
+            continue;
+
+        // if (strncmp(p, "return", 6) == 0 && !is_alnum(p[6]))
+        // {
+        //     cur = new_token(TK_RETURN, cur, p, 6);
+        //     p += 6;
+        //     continue;
+        // }
 
         if (is_ident1(*p))
         {
@@ -255,7 +273,7 @@ Node *stmt()
         expect("}");
         return node;
     }
-    
+
     if (consum_by_kind(TK_RETURN))
     {
         node = calloc(1, sizeof(Node));
@@ -273,19 +291,18 @@ Node *stmt()
 
 Node *block_stmt()
 {
-    Node head; 
-    Node * cur_node = &head;
-    while(!peek("}")){
+    Node head;
+    Node *cur_node = &head;
+    while (!peek("}"))
+    {
         cur_node->next = stmt();
         cur_node = cur_node->next;
     }
 
-    Node * node = new_node(ND_BLOCK,NULL,NULL);
+    Node *node = new_node(ND_BLOCK, NULL, NULL);
     node->next = head.next;
 
-
     return node;
-
 }
 
 Node *expr()
