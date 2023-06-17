@@ -53,7 +53,7 @@ bool consume(char *op)
     return true;
 }
 
-Token *consum_by_kind(TokenKind kind)
+Token *consume_by_kind(TokenKind kind)
 {
     if (token->kind == kind)
     {
@@ -62,6 +62,30 @@ Token *consum_by_kind(TokenKind kind)
         return ret;
     }
     return NULL;
+}
+
+char *token_kind_to_str(TokenKind kind)
+{
+    switch (kind)
+    {
+    case TK_ELSE:
+        return "else";
+    case TK_IF:
+        return "if";
+    default:
+        return "unknown token";
+    }
+}
+
+void expect_by_kind(TokenKind kind)
+{
+    if (token->kind == kind)
+    {
+        Token *ret = token;
+        token = token->next;
+        return;
+    }
+    error_at(token->str, "expected %s", token_kind_to_str(kind));
 }
 
 void expect(char *op)
@@ -128,8 +152,8 @@ Token *tokenize(char *p)
             continue;
         }
 
-        static char *keyword_strs[] = {"return", "if"};
-        static TokenKind keyword_Kinds[] = {TK_RETURN, TK_IF};
+        static char *keyword_strs[] = {"return", "if", "else", "while", "for"};
+        static TokenKind keyword_Kinds[] = {TK_RETURN, TK_IF, TK_ELSE, TK_WHILE, TK_FOR};
         bool keyword_found = false;
         for (int i = 0; i < sizeof(keyword_strs) / sizeof(keyword_strs[0]); i++)
         {
@@ -144,7 +168,6 @@ Token *tokenize(char *p)
                 break;
             }
         }
-
         if (keyword_found)
             continue;
 
@@ -207,7 +230,11 @@ Node *new_node_var(Token *tok)
 }
 
 // program    = stmt*
-// stmt       = expr ";" | "{" stmt* "}" | "return" expr ";"
+// stmt       = expr ";"
+// | "if" "(" expr ")" stmt ("else" stmt)?
+// | "while" "(" expr ")" stmt
+// | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+// | "{" stmt* "}" | "return" expr ";"
 // expr       = assign
 // assign     = equality ("=" assign)?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -274,18 +301,62 @@ Node *stmt()
         return node;
     }
 
-    if (consum_by_kind(TK_RETURN))
+    if (consume_by_kind(TK_RETURN))
     {
         node = calloc(1, sizeof(Node));
         node->kind = ND_RETURN;
         node->lhs = expr();
         expect(";");
+        return node;
     }
-    else
+
+    if (consume_by_kind(TK_IF))
     {
-        node = expr();
-        expect(";");
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_IF;
+
+        expect("(");
+        node->cond = expr();
+        expect(")");
+        node->then = stmt();
+        if (consume_by_kind(TK_ELSE))
+        {
+            node->els = stmt();
+        }
+        return node;
     }
+    if (consume_by_kind(TK_WHILE))
+    {
+        node = calloc(1,sizeof(Node));
+        node->kind =ND_WHILE;
+        expect("(");
+        node->cond = expr();
+        expect(")");
+        node->then = stmt();
+        return node;
+    }
+    if (consume_by_kind(TK_FOR)){
+        node = calloc(1,sizeof(Node));
+        node->kind = ND_FOR;
+        expect("(");
+        node->init = expr();
+        expect(";");
+        node->cond = expr();
+        expect(";");
+        if(!peek(")")){
+            node->inc = expr();
+        } else {
+            Node * empty = calloc(1,sizeof(Node));
+            empty->kind = ND_EMPTY;
+            node->inc = empty;
+        }
+        expect(")");
+        node->then = stmt();
+        return node;
+    }
+
+    node = expr();
+    expect(";");
     return node;
 }
 
@@ -307,6 +378,11 @@ Node *block_stmt()
 
 Node *expr()
 {
+    if(peek(";")){
+        Node* node = calloc(1,sizeof(Node));
+        node->kind = ND_EMPTY;
+        return node;
+    }
     return assign();
 }
 
@@ -431,7 +507,7 @@ Node *primary()
     }
     Token *cur_token;
     Node *node;
-    if (cur_token = consum_by_kind(TK_IDENT))
+    if (cur_token = consume_by_kind(TK_IDENT))
     {
         node = calloc(1, sizeof(Node));
         node->kind = ND_LVAR;
@@ -453,7 +529,7 @@ Node *primary()
         }
         return node;
     }
-    if (cur_token = consum_by_kind(TK_NUM))
+    if (cur_token = consume_by_kind(TK_NUM))
     {
         node = new_node_num(cur_token->val);
         return node;

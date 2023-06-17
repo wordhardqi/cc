@@ -1,5 +1,12 @@
 #include "9cc.h"
 
+int count()
+{
+    static int count = 0;
+    ++count;
+    return count;
+}
+
 void gen_lval(Node *node)
 {
     if (node->kind != ND_LVAR)
@@ -13,6 +20,8 @@ void gen(Node *node)
 {
     switch (node->kind)
     {
+    case ND_EMPTY:
+        return;
     case ND_NUM:
         printf("  push %d\n", node->val);
         return;
@@ -38,15 +47,59 @@ void gen(Node *node)
         printf("  ret\n");
         return;
     case ND_BLOCK:
-        Node * cur = node->next;
-        while(cur){
+        Node *cur = node->next;
+        while (cur)
+        {
             gen(cur);
             cur = cur->next;
-            if(cur !=NULL) {
+            if (cur != NULL)
+            {
                 printf("  pop rax\n");
             }
         }
-         return;
+        return;
+    case ND_IF:
+        int label_number = count();
+        gen(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .L.else.%d\n", label_number);
+        gen(node->then);
+        printf("  jmp .L.end.%d\n", label_number);
+        printf(".L.else.%d:\n", label_number);
+        if (node->els)
+            gen(node->els);
+        printf(".L.end.%d:\n", label_number);
+        return;
+    case ND_WHILE: {
+        int label_number = count();
+        printf(".L.while.begin.%d:\n", label_number);
+        gen(node->cond);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .L.while.end.%d\n", label_number);
+        gen(node->then);
+        printf("  jmp .L.while.begin.%d\n", label_number);
+        printf(".L.while.end.%d:\n", label_number);
+        return;
+    }
+    case ND_FOR: {
+        int label_number = count();
+        gen(node->init);
+        printf(".L.for.begin.%d:\n", label_number);
+        if (node->cond->kind != ND_EMPTY)
+        {
+            gen(node->cond);
+            printf("  pop rax\n");
+            printf("  cmp rax, 0\n");
+            printf("  je .L.for.end.%d\n", label_number);
+        }
+        gen(node->then);
+        gen(node->inc);
+        printf("  jmp .L.for.begin.%d\n", label_number);
+        printf(".L.for.end.%d:\n", label_number);
+        return;
+    }
     }
 
     gen(node->lhs);

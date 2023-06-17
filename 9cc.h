@@ -13,6 +13,7 @@ void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);
 
 // Parser
+
 typedef enum
 {
     TK_RESERVED,
@@ -25,6 +26,7 @@ typedef enum
     TK_FOR,
     TK_EOF,
 } TokenKind;
+
 
 typedef struct Token
 {
@@ -41,6 +43,7 @@ extern Token *token;
 
 typedef enum
 {
+    ND_EMPTY,
     ND_ADD,
     ND_SUB,
     ND_MUL,
@@ -52,6 +55,9 @@ typedef enum
     ND_ASSIGN,
     ND_LVAR,
     ND_RETURN,
+    ND_IF,
+    ND_WHILE,
+    ND_FOR,
     ND_BLOCK,
     ND_NUM,
 } NodeKind;
@@ -78,6 +84,12 @@ struct Node
     Node *rhs;
     int val;
     int offset;
+
+    Node * cond;
+    Node * then;
+    Node * els; 
+    Node * init;
+    Node * inc;
 };
 
 Token *tokenize(char *p);
