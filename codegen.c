@@ -16,6 +16,18 @@ void gen_lval(Node *node)
     printf("  push rax\n");
 }
 
+static char *argreg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+void push()
+{
+    printf("  push rax\n");
+}
+
+void pop(char *reg)
+{
+    printf("  pop %s\n", reg);
+}
+
 void gen(Node *node)
 {
     switch (node->kind)
@@ -46,7 +58,7 @@ void gen(Node *node)
         printf("  pop rbp\n");
         printf("  ret\n");
         return;
-    case ND_BLOCK:
+    case ND_BLOCK: {
         Node *cur = node->next;
         while (cur)
         {
@@ -58,7 +70,8 @@ void gen(Node *node)
             }
         }
         return;
-    case ND_IF:
+    }
+    case ND_IF: {
         int label_number = count();
         gen(node->cond);
         printf("  pop rax\n");
@@ -71,6 +84,7 @@ void gen(Node *node)
             gen(node->els);
         printf(".L.end.%d:\n", label_number);
         return;
+    }
     case ND_WHILE: {
         int label_number = count();
         printf(".L.while.begin.%d:\n", label_number);
@@ -99,6 +113,25 @@ void gen(Node *node)
         printf("  jmp .L.for.begin.%d\n", label_number);
         printf(".L.for.end.%d:\n", label_number);
         return;
+    case ND_FUNCALL: {
+        int nargs = 0;
+        for (Node *arg = node->args; arg; arg = arg->next)
+        {
+            gen(arg);
+            nargs++;
+        }
+
+        for (int i = nargs - 1; i >= 0; i--)
+        {
+            pop(argreg[i]);
+        }
+
+        // https://stackoverflow.com/questions/6212665/why-is-eax-zeroed-before-a-call-to-printf#:~:text=Since%20the%20compiler%20doesn't,defined%20as%20having%20variable%20arguments.
+        printf("  mov rax, 0\n");
+        printf("  call %s\n", node->funcname);
+        printf("  push rax\n");
+        return;
+    }
     }
     }
 

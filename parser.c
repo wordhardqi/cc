@@ -1,5 +1,6 @@
 #include "9cc.h"
-
+#include <string.h>
+#include <stdlib.h>
 bool startswith(char *p, char *q)
 {
     return memcmp(p, q, strlen(q)) == 0;
@@ -145,7 +146,7 @@ Token *tokenize(char *p)
             continue;
         }
 
-        if (strchr("+-*/()><;={}", *p))
+        if (strchr(",+-*/()><;={}", *p))
         {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p += 1;
@@ -242,7 +243,8 @@ Node *new_node_var(Token *tok)
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-")? primary
-// primary    = num | ident | "(" expr ")"// expr       = equality
+// primary    = num | ident ("(" fun_args")")? | "(" expr ")"
+// fun_args   = e | assign(, assign)?
 Lvar *locals = NULL;
 
 Lvar *find_lvar(Token *tok)
@@ -272,7 +274,7 @@ Node *add();
 Node *mul();
 Node *unary();
 Node *primary();
-
+Node *funcall();
 Node *parse()
 {
     program();
@@ -327,26 +329,30 @@ Node *stmt()
     }
     if (consume_by_kind(TK_WHILE))
     {
-        node = calloc(1,sizeof(Node));
-        node->kind =ND_WHILE;
+        node = calloc(1, sizeof(Node));
+        node->kind = ND_WHILE;
         expect("(");
         node->cond = expr();
         expect(")");
         node->then = stmt();
         return node;
     }
-    if (consume_by_kind(TK_FOR)){
-        node = calloc(1,sizeof(Node));
+    if (consume_by_kind(TK_FOR))
+    {
+        node = calloc(1, sizeof(Node));
         node->kind = ND_FOR;
         expect("(");
         node->init = expr();
         expect(";");
         node->cond = expr();
         expect(";");
-        if(!peek(")")){
+        if (!peek(")"))
+        {
             node->inc = expr();
-        } else {
-            Node * empty = calloc(1,sizeof(Node));
+        }
+        else
+        {
+            Node *empty = calloc(1, sizeof(Node));
             empty->kind = ND_EMPTY;
             node->inc = empty;
         }
@@ -378,8 +384,9 @@ Node *block_stmt()
 
 Node *expr()
 {
-    if(peek(";")){
-        Node* node = calloc(1,sizeof(Node));
+    if (peek(";"))
+    {
+        Node *node = calloc(1, sizeof(Node));
         node->kind = ND_EMPTY;
         return node;
     }
@@ -507,28 +514,40 @@ Node *primary()
     }
     Token *cur_token;
     Node *node;
+
+    // ident() or ident
     if (cur_token = consume_by_kind(TK_IDENT))
     {
-        node = calloc(1, sizeof(Node));
-        node->kind = ND_LVAR;
-
-        Lvar *lvar = find_lvar(cur_token);
-        if (lvar)
+        if (peek("("))
         {
-            node->offset = lvar->offset;
+            Token *tk_func_name = cur_token;
+            node = funcall(tk_func_name);
         }
         else
         {
-            lvar = calloc(1, sizeof(Lvar));
-            lvar->next = locals;
-            lvar->name = cur_token->str;
-            lvar->len = cur_token->len;
-            lvar->offset = locals == NULL ? 8 : locals->offset + 8;
-            node->offset = lvar->offset;
-            locals = lvar;
+            node = calloc(1, sizeof(Node));
+            node->kind = ND_LVAR;
+
+            Lvar *lvar = find_lvar(cur_token);
+            if (lvar)
+            {
+                node->offset = lvar->offset;
+            }
+            else
+            {
+                lvar = calloc(1, sizeof(Lvar));
+                lvar->next = locals;
+                lvar->name = cur_token->str;
+                lvar->len = cur_token->len;
+                lvar->offset = locals == NULL ? 8 : locals->offset + 8;
+                node->offset = lvar->offset;
+                locals = lvar;
+            }
         }
+
         return node;
     }
+
     if (cur_token = consume_by_kind(TK_NUM))
     {
         node = new_node_num(cur_token->val);
@@ -536,4 +555,28 @@ Node *primary()
     }
     error_at(token->str, "expected expression | ident | num");
     return NULL;
+}
+Node *funcall(Token* tk_func_name)
+{
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_FUNCALL;
+    node->funcname = strndup(tk_func_name->str, tk_func_name->len);
+    expect("(");
+    if (consume(")"))
+    {
+        node->args = NULL;
+    }
+    else
+    {
+        Node *cur_node;
+        node->args = assign();
+        cur_node = node->args;
+        while (!consume(")"))
+        {
+            expect(",");
+            cur_node->next = assign();
+            cur_node = cur_node->next;
+        }
+    }
+    return node;
 }

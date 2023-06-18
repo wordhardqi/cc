@@ -1,4 +1,4 @@
-
+#pragma once
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -59,6 +59,7 @@ typedef enum
     ND_WHILE,
     ND_FOR,
     ND_BLOCK,
+    ND_FUNCALL,
     ND_NUM,
 } NodeKind;
 
@@ -90,6 +91,9 @@ struct Node
     Node * els; 
     Node * init;
     Node * inc;
+
+    char * funcname;
+    Node * args;
 };
 
 Token *tokenize(char *p);

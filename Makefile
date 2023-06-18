@@ -1,7 +1,7 @@
 CFALGS=-std=c11 -ggdb -static
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
-
+CC=gcc
 %.o: %.c
 	$(CC)  -c  -o $@ $< $(CFALGS) $(LDFLAGS)
 9cc: $(OBJS)
