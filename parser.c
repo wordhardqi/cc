@@ -20,6 +20,7 @@ bool is_alnum(char c)
     return is_ident1(c) || ('0' <= c && c <= '9');
 }
 
+
 char *uesr_input;
 Token *token;
 
@@ -146,7 +147,7 @@ Token *tokenize(char *p)
             continue;
         }
 
-        if (strchr(",+-*/()><;={}", *p))
+        if (strchr(",+-*/()><;={}&", *p))
         {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p += 1;
@@ -242,7 +243,7 @@ Node *new_node_var(Token *tok)
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
-// unary      = ("+" | "-")? primary
+// unary      = ("+" | "-")? primary | "*" unary | "&" unary
 // primary    = num | ident ("(" fun_args")")? | "(" expr ")"
 // fun_args   = e | assign(, assign)?
 Lvar *locals = NULL;
@@ -500,6 +501,14 @@ Node *unary()
     if (consume("-"))
     {
         return new_node(ND_SUB, new_node_num(0), primary());
+    }
+    if(consume("&"))
+    {
+        return new_node(ND_ADDR, unary(), NULL);
+    }
+    if(consume("*"))
+    {
+        return new_node(ND_DEREF,unary(), NULL);
     }
     return primary();
 }

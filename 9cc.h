@@ -61,6 +61,8 @@ typedef enum
     ND_BLOCK,
     ND_FUNCALL,
     ND_NUM,
+    ND_ADDR,
+    ND_DEREF
 } NodeKind;
 
 typedef struct Lvar Lvar;

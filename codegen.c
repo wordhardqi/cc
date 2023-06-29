@@ -27,6 +27,10 @@ void pop(char *reg)
 {
     printf("  pop %s\n", reg);
 }
+void mov(char* a, char* b)
+{
+    printf("  mov %s, %s\n",a,b);
+}
 
 void gen(Node *node)
 {
@@ -152,6 +156,15 @@ void gen(Node *node)
         printf(".L.call.end.%d:\n", c);
         printf("  push rax\n");
 
+        return;
+    case ND_ADDR:
+        gen_lval(node->lhs);
+        return;
+    case ND_DEREF:
+        gen(node->lhs);
+        pop("rax");
+        mov("rax","[rax]");
+        push();
         return;
     }
     }

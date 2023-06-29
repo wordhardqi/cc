@@ -71,4 +71,6 @@ assert 3  'print_ok(); print_ok(); return 3;'
 assert 3  'print_ok(); print_ok(); return 3;'
 assert 21  'a = add_6(1,2,3,4,5,6); return a;'
 assert 8  'a = print_add(3,5); return a;'
+assert 3  'x = 3; y = &x; return *y;'
+assert 3  ' x = 3; y = 5; z = &y + 8;return *z;'
 echo OK
