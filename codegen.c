@@ -126,10 +126,32 @@ void gen(Node *node)
             pop(argreg[i]);
         }
 
+        // // rsp must be odd number 0x8 before call
+        // // printf("  add rsp, 8\n");
+        // printf("  and rsp, -16\n");
+        //         push();
+
+        // //
         // https://stackoverflow.com/questions/6212665/why-is-eax-zeroed-before-a-call-to-printf#:~:text=Since%20the%20compiler%20doesn't,defined%20as%20having%20variable%20arguments.
+
+        // printf("  mov rax, 0\n");
+        // printf("  call %s\n", node->funcname);
+        // printf("  push rax\n");
+        int c = count();
+        printf("  mov rax, rsp\n");
+        printf("  and rax, 15\n");
+        printf("  jnz .L.call.%d\n", c);
         printf("  mov rax, 0\n");
         printf("  call %s\n", node->funcname);
+        printf("  jmp .L.call.end.%d\n", c);
+        printf(".L.call.%d:\n", c);
+        printf("  sub rsp, 8\n");
+        printf("  mov rax, 0\n");
+        printf("  call %s\n", node->funcname);
+        printf("  add rsp, 8\n");
+        printf(".L.call.end.%d:\n", c);
         printf("  push rax\n");
+
         return;
     }
     }

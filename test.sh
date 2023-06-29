@@ -1,11 +1,12 @@
 #!/bin/bash
 
-cat <<EOF | gcc -xc -S -o tmp2.s - 
+cat <<EOF | gcc -ggdb -xc -S -o tmp2.s - 
 #include <stdio.h>
 int ret3() {return 3;}
 int ret5() {return 5;}
 void print_ok() {printf("OK\n");}
-int  print_add(int x, int y) { return x + y ;}
+int  print_add(int x, int y) {printf("%d",x+y); return x + y ;}
+int add_6(int x1,int x2, int x3, int x4, int x5, int x6) {return x1+x2+x3+x4+x5+x6;}
 EOF
 
 
@@ -14,7 +15,7 @@ assert() {
 	expected="$1"
 	input="$2"
 	./9cc "$input" > tmp.s
-	gcc -static -o tmp tmp.s tmp2.s
+	gcc -ggdb -static -o tmp tmp.s tmp2.s
 	./tmp
 	actual="$?"
 	if [ "$actual" = "$expected" ]; then
@@ -68,5 +69,6 @@ assert 5  'return ret5();'
 assert 8  'a = ret3(); b = ret5(); return a+b;'
 assert 3  'print_ok(); print_ok(); return 3;'
 assert 3  'print_ok(); print_ok(); return 3;'
+assert 21  'a = add_6(1,2,3,4,5,6); return a;'
 assert 8  'a = print_add(3,5); return a;'
 echo OK

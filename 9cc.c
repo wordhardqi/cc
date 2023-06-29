@@ -28,7 +28,9 @@ int main(int argc, char **argv)
     {
         gen(code[i]);
         printf("  pop rax\n");
-    }
+    }  
+    printf(".L.return:\n");
+
     printf("  mov rsp, rbp\n");
     printf("  pop rbp\n");
     printf("  ret\n");
